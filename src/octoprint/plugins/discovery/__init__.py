@@ -11,6 +11,7 @@ For a spec see http://www.upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.
 import collections
 import platform
 import socket
+import threading
 import time
 
 import flask
@@ -58,6 +59,8 @@ class DiscoveryPlugin(
         # zeroconf
         self._zeroconf = None
         self._zeroconf_registrations = collections.defaultdict(list)
+        self._zeroconf_startup_thread = None
+        self._zeroconf_startup_cancelled = threading.Event()
 
         # upnp/ssdp
         self._ssdp_monitor_active = False
@@ -146,30 +149,69 @@ class DiscoveryPlugin(
         self.port = port
 
         # Zeroconf
+        #
+        # Registering a service blocks for about 0.8s per service (mDNS name probing), and
+        # doing that right here, one service after the other, used to delay the point at
+        # which the server starts to listen by multiple seconds. Nothing needs the services
+        # to be announced before we are up, so that happens in the background instead.
+        #
+        # The records are assembled here though, since that touches the settings (and
+        # potentially even writes them, see get_uuid) and should stay on this thread.
         instance_name = self.get_instance_name()
-        self.zeroconf_register(
-            "_http._tcp", instance_name, txt_record=self._create_http_txt_record_dict()
-        )
-        self.zeroconf_register(
-            "_octoprint._tcp",
-            instance_name,
-            txt_record=self._create_octoprint_txt_record_dict(),
-        )
+        registrations = [
+            ("_http._tcp", instance_name, None, self._create_http_txt_record_dict()),
+            (
+                "_octoprint._tcp",
+                instance_name,
+                None,
+                self._create_octoprint_txt_record_dict(),
+            ),
+        ]
         for zc in self._settings.get(["zeroConf"]):
             if "service" in zc:
-                self.zeroconf_register(
-                    zc["service"],
-                    zc.get("name", instance_name),
-                    port=zc.get("port"),
-                    txt_record=zc.get("txtRecord"),
+                registrations.append(
+                    (
+                        zc["service"],
+                        zc.get("name", instance_name),
+                        zc.get("port"),
+                        zc.get("txtRecord"),
+                    )
                 )
+
+        self._zeroconf_startup_cancelled.clear()
+        self._zeroconf_startup_thread = threading.Thread(
+            target=self._zeroconf_register_all,
+            args=(registrations,),
+            name="DiscoveryZeroconfRegistration",
+            daemon=True,
+        )
+        self._zeroconf_startup_thread.start()
 
         # SSDP
         self._ssdp_register()
 
+    def _zeroconf_register_all(self, registrations):
+        for reg_type, name, port, txt_record in registrations:
+            if self._zeroconf_startup_cancelled.is_set():
+                return
+
+            try:
+                self.zeroconf_register(reg_type, name, port=port, txt_record=txt_record)
+            except Exception:
+                self._logger.exception(
+                    f"Error while registering {reg_type} with Zeroconf"
+                )
+
     ##~~ ShutdownPlugin API -- used for unregistering OctoPrint's Zeroconf and SSDP service upon application shutdown
 
     def on_shutdown(self):
+        # stop the background registration from starting any further registrations and
+        # wait for one that might still be in flight, so that it is unregistered below too
+        self._zeroconf_startup_cancelled.set()
+        startup_thread = self._zeroconf_startup_thread
+        if startup_thread is not None and startup_thread.is_alive():
+            startup_thread.join(timeout=10)
+
         registrations = list(self._zeroconf_registrations.keys())
         for key in registrations:
             reg_type, port = key
