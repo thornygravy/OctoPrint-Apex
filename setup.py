@@ -23,7 +23,7 @@ except ImportError:
 # ----------------------------------------------------------------------------------------
 
 # Supported python versions
-PYTHON_REQUIRES = ">=3.7, <3.14"
+PYTHON_REQUIRES = ">=3.11, <3.14"
 
 # Requirements for setup.py
 SETUP_REQUIRES = []
@@ -36,74 +36,49 @@ bundled_plugins = [
 ]
 core_deps = [
     "argon2-cffi>=23.1.0",
-    "Babel>=2.16,<2.17 ; python_version>='3.8'",  # breaking changes can happen on minor version increases
-    "cachelib>=0.13.0,<0.14 ; python_version>='3.8'",
+    "Babel>=2.16,<2.17",  # breaking changes can happen on minor version increases
+    "cachelib>=0.13.0,<0.14",
     "Click>=8.1.8,!=8.2.0,<8.3",  # 8.2.0 has broken flags, see pallets/click#2894; 8.3 has breaking changes, fixed in 1.12.0.dev
     "colorlog>=6.9.0,<7",
     "emoji>=2.14.1,<3",
     "feedparser>=6.0.11,<7",
     "filetype>=1.2.0,<2",
     "Flask-Assets>=2.1.0,<3",
-    "Flask-Babel>=4.0.0,<5 ; python_version>='3.8'",
+    "Flask-Babel>=4.0.0,<5",
     "Flask-Login>=0.6.3,<0.7",  # breaking changes can happen on minor version increases
-    "Flask-Limiter>=3.8,<3.9 ; python_version>='3.8'",  # later versions require Python 3.9+
-    "flask>=3.0.3,<3.1 ; python_version>='3.8'",  # later versions require Python 3.9+, breaking changes can happen on minor version increases (with deprecation warnings)
+    "Flask-Limiter>=3.8,<3.9",
+    "flask>=3.0.3,<3.1",  # breaking changes can happen on minor version increases (with deprecation warnings)
     "frozendict>=2.4.6,<3",
     "limits<5",  # dependency of Flask-Limiter, v5 was released days before 1.11.0 and contains backwards incompatibilities, pinning upper limit out of caution
-    "markdown>=3.7,<3.8 ; python_version>='3.8'",
-    # The sdist of markupsafe 3.0.3+ fails to build under pip < 21.2 (e.g. Bullseye on RPi/OctoPi 1.0.0) due to the latter vendoring a buggy toml library.
-    # The following environment markers should hopefully limit the pin to affected environments, adequately old python + ARMv7 (for other platforms there are wheels available).
-    "markupsafe<=3.0.2 ; python_version<='3.9' and platform_machine=='armv7l'",
+    "markdown>=3.7,<3.8",
     "netaddr>=1.3.0,<1.4",  # changelog hints at breaking changes on minor version increases
     # "netifaces2>=0.0.21,<0.1",  # fork of netifaces in Rust, use rolled back due to build issues in some environments
     "netifaces>=0.11.0,<0.12",
     "packaging",
-    "libpass>=1.8.1,<2 ; python_version>='3.9'",  # replacement for unmaintained passlib
-    "passlib==1.7.4 ; python_version<'3.9'",
-    "pathvalidate>=3.2.1,<4",  # later versions require Python 3.9
+    "libpass>=1.8.1,<2",  # replacement for unmaintained passlib
+    "pathvalidate>=3.2.1,<4",
     "psutil>=6.1.1,<7",
-    "pydantic>=2.10.6,<3 ; python_version>='3.8'",
+    "pydantic>=2.10.6,<3",
     "pylru>=1.2.1,<2",
     "pyserial>=3.5,<4",
     "pytz",
-    "PyYAML>=6.0.2,<7 ; python_version>='3.8'",  # changelog at https://github.com/yaml/pyyaml/blob/master/CHANGES
-    "requests>=2.32.3,<3 ; python_version>='3.8'",
+    "PyYAML>=6.0.2,<7",  # changelog at https://github.com/yaml/pyyaml/blob/master/CHANGES
+    "requests>=2.32.3,<3",
     "sarge==0.1.7.post1",
     "semantic_version>=2.10.0,<3",
     "sentry-sdk>=2.20.0,<3",
     "setuptools",
-    "tornado>=6.5.1,<6.6 ; python_version>='3.9'",
-    "tornado==6.4.2 ; python_version>='3.8' and python_version<'3.9'",  # later versions require Python 3.9+
-    "watchdog>=4.0.2,<5 ; python_version>='3.8'",  # later versions require Python 3.9+
-    "websocket-client>=1.8.0,<1.9 ; python_version>='3.8'",  # breaking changes can happen on patch version increases, changelog incomplete
-    "werkzeug>=3.0.6,<3.1 ; python_version>='3.8'",  # later versions require Python 3.9+, breaking changes can happen on minor version increases
-    "wrapt>=1.17.2,<1.18 ; python_version>='3.8'",
-    "zeroconf>=0.136.2,<0.137 ; python_version>='3.8'",  # later versions require Python 3.9+, breaking changes can happen on minor version increases (despite semantic versioning)
+    "tornado>=6.5.1,<6.6",
+    "watchdog>=4.0.2,<5",
+    "websocket-client>=1.8.0,<1.9",  # breaking changes can happen on patch version increases, changelog incomplete
+    "werkzeug>=3.0.6,<3.1",  # breaking changes can happen on minor version increases
+    "wrapt>=1.17.2,<1.18",
+    "zeroconf>=0.136.2,<0.137",  # breaking changes can happen on minor version increases (despite semantic versioning)
     "zipstream-ng>=1.8.0,<2.0.0",
 ]
-core_deps_37 = [
-    "Babel>=2.14.0,<2.15 ; python_version<'3.8'",
-    "cachelib>=0.10.2,<0.11 ; python_version<'3.8'",
-    "Flask-Babel>=3.1.0,<4 ; python_version<'3.8'",
-    "Flask-Limiter>=3.5,<3.6 ; python_version<'3.8'",
-    "flask>=2.2.3,<2.3 ; python_version<'3.8'",
-    "importlib-metadata>=6.7.0 ; python_version<'3.8'",  # backport of importlib.metadata for python 3.7, later versions require Python 3.8+
-    "markdown>=3.4.4,<3.5 ; python_version<'3.8'",
-    "pydantic==1.10.16 ; python_version<'3.8'",  # to be kept pinned until https://github.com/pydantic/pydantic/issues/7689 is resolved
-    "PyYAML==6.0.1 ; python_version<'3.8'",
-    "requests>=2.31,<2.32 ; python_version<'3.8'",
-    "tornado>=6.2,<6.3 ; python_version<'3.8'",
-    "watchdog>=3.0.0,<4 ; python_version<'3.8'",
-    "websocket-client==1.6.1 ; python_version<'3.8'",
-    "werkzeug>=2.2.3,<2.3.0 ; python_version<'3.8'",
-    "wrapt>=1.16,<1.17 ; python_version<'3.8'",
-    "zeroconf>=0.131.0,<0.132 ; python_version<'3.8'",
-]
 vendored_deps = [
-    "blinker>=1.8.0,<1.9.0 ; python_version>='3.8'",  # dependency of flask_principal, later versions require Python 3.9+
-    "blinker>=1.6.3,<1.7.0 ; python_version<'3.8'",
-    "more-itertools>=10.5.0 ; python_version>='3.8'",  # dependency of class-doc, later versions require Python 3.9+
-    "more-itertools>=9.1,<10 ; python_version<'3.8'",
+    "blinker>=1.8.0,<1.9.0",  # dependency of flask_principal
+    "more-itertools>=10.5.0",  # dependency of class-doc
     "regex",  # dependency of awesome-slugify
     "unidecode",  # dependency of awesome-slugify
 ]
@@ -113,9 +88,7 @@ plugin_deps = [
     "wheel",  # makes sure plugins can be built as wheels in OctoPrint's venv, see #4682
 ]
 
-INSTALL_REQUIRES = (
-    bundled_plugins + core_deps + core_deps_37 + vendored_deps + plugin_deps
-)
+INSTALL_REQUIRES = bundled_plugins + core_deps + vendored_deps + plugin_deps
 
 # Additional requirements for optional install options and/or OS-specific dependencies
 EXTRA_REQUIRES = {
@@ -129,8 +102,7 @@ EXTRA_REQUIRES = {
         "ddt",
         "mock>=5.1.0,<6",
         "pytest-doctest-custom>=1.0.0,<2",
-        "pytest>=8.3.4,<9 ; python_version>='3.8'",
-        "pytest>=7.4.4,<8 ; python_version<'3.8'",
+        "pytest>=8.3.4,<9",
         "time-machine",
         # formatting, liniting, etc
         "ruff",
@@ -384,10 +356,6 @@ if __name__ == "__main__":
             "Operating System :: OS Independent",
             "Programming Language :: Python",
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.7",
-            "Programming Language :: Python :: 3.8",
-            "Programming Language :: Python :: 3.9",
-            "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
             "Programming Language :: Python :: 3.12",
             "Programming Language :: Python :: 3.13",

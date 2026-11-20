@@ -4,16 +4,12 @@ This module provides a bunch of utility methods and helpers for version handling
 
 __license__ = "GNU Affero General Public License http://www.gnu.org/licenses/agpl.html"
 
+import importlib.metadata as meta
 import logging
 
 from packaging.version import parse as parse_version
 
 from octoprint import __version__
-
-try:
-    import importlib.metadata as meta
-except ImportError:  # Python 3.7
-    import importlib_metadata as meta
 
 
 def get_package_version(package):
