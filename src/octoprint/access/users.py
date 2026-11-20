@@ -11,6 +11,10 @@ import time
 
 import wrapt
 from flask_login import AnonymousUserMixin, UserMixin
+
+# libpass is a maintained drop-in replacement for passlib and installs under the
+# "passlib" import name, so this is the right import for both of them
+from passlib.hash import pbkdf2_sha256
 from werkzeug.local import LocalProxy
 
 from octoprint.access.groups import Group, GroupChangeListener
@@ -22,23 +26,19 @@ from octoprint.util import get_fully_qualified_classname as fqcn
 password_hashers = []
 
 try:
-    from libpass.hash import pbkdf2_sha256
+    from passlib.hash import argon2
 
-    LIBPASS = True
-except ImportError:  # Python < 3.9
-    from passlib.hash import pbkdf2_sha256
-
-    LIBPASS = False
-
-try:
-    if LIBPASS:
-        from libpass.hash import argon2
-    else:
-        from passlib.hash import argon2
-
-    # test if we can actually hash and verify, if not we won't use this backend
-    hash = argon2.hash("test")
-    assert argon2.verify("test", hash)
+    # test if we can actually hash and verify, if not we won't use this backend.
+    #
+    # This uses minimal cost parameters on purpose: the real defaults (64 MiB of memory
+    # per run) made this self-test the single most expensive thing happening on import.
+    #
+    # Note that hash and verify are deliberately two separate statements: passlib loads
+    # its backend lazily on first use and replaces the lazy stubs on the class while doing
+    # so, so verify has to be looked up only after the hash call.
+    _argon2_probe = argon2.using(rounds=1, memory_cost=8, parallelism=1)
+    _argon2_probe_hash = _argon2_probe.hash("test")
+    assert _argon2_probe.verify("test", _argon2_probe_hash)
 
     password_hashers.append(argon2)
 except Exception:
