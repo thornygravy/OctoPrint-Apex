@@ -1,8 +1,8 @@
 name: "Nightly merge"
 
+# Inherited from upstream OctoPrint. It relies on a dev branch that this fork doesn't have,
+# so it only runs when started by hand here.
 on:
-  schedule:
-    - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:

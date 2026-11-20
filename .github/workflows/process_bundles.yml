@@ -1,9 +1,9 @@
 name: "Process systeminfo bundles"
+
+# Inherited from upstream OctoPrint. It relies on upstream's support bot
+# (OctoPrint/actions@main, run with a write token), so it only runs when started by hand here.
 on:
-  issues:
-    types: [opened, edited]
-  issue_comment:
-    types: [created, edited]
+  workflow_dispatch:
 
 jobs:
   process-bundles:

@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DEFAULT_PYTHON: "3.12"
+  DEFAULT_PYTHON: "3.11"
 
 jobs:
   build:
@@ -75,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python: ["3.11"]
     runs-on: ubuntu-22.04 # change back to ubuntu-latest once we drop Python 3.7
     steps:
       - uses: actions/checkout@v5
@@ -121,7 +121,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python: ["3.11"]
         installable: ["wheel", "sdist"]
     runs-on: ubuntu-22.04 # change back to ubuntu-latest once we drop Python 3.7
     steps:
@@ -169,7 +169,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.7", "3.12", "3.13"]
+        python: ["3.11"]
     steps:
       - name: ⬇ Download build result
         uses: actions/download-artifact@v5
@@ -208,7 +208,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.7", "3.12", "3.13"]
+        python: ["3.11"]
     steps:
       - uses: actions/checkout@v5
       - name: 🏗 Set up Python ${{ matrix.python }}

@@ -1,7 +1,8 @@
 name: "Pull Request Automation"
+# Inherited from upstream OctoPrint. It relies on upstream's PR validation rules,
+# so it only runs when started by hand here.
 on:
-  pull_request_target:
-    types: ["opened"]
+  workflow_dispatch:
 
 jobs:
   pr-automation:

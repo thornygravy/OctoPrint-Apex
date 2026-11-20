@@ -1,13 +1,9 @@
 name: Add issues/PRs to backlog automatically
 
+# Inherited from upstream OctoPrint. It relies on upstream's secrets and Backlog project,
+# so it only runs when started by hand here.
 on:
-  issues:
-    types:
-      - opened
-      - transferred
-  pull_request_target:
-    types:
-      - opened
+  workflow_dispatch:
 
 jobs:
   add-to-project:

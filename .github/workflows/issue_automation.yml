@@ -1,7 +1,8 @@
 name: "Issue Automation"
+# Inherited from upstream OctoPrint. It relies on upstream's issue labels and triage flow,
+# so it only runs when started by hand here.
 on:
-  issues:
-    types: [opened, edited, closed, reopened, labeled, unlabeled]
+  workflow_dispatch:
 
 jobs:
   issue-automation:

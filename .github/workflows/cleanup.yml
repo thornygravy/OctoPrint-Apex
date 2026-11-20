@@ -1,8 +1,8 @@
 name: "Cleanup issues & PRs"
 
+# Inherited from upstream OctoPrint. It relies on upstream's issue triage policy,
+# so it only runs when started by hand here.
 on:
-  schedule:
-    - cron: "42 23 * * *"
   workflow_dispatch:
 
 jobs:

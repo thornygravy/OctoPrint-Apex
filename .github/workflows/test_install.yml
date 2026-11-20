@@ -1,12 +1,9 @@
-name: Test install of branches and latest release twice per day
+name: Test install of the main branch
 
+# Upstream ran this twice a day against its own branches and the latest upstream release,
+# on every Python version it supported. Here it is only run by hand.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
-  schedule:
-    - cron: "0 */12 * * *"
 
 jobs:
   install-branch:
@@ -14,8 +11,8 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-22.04"] # change back to ubuntu-latest once we drop Python 3.7
-        python: ["3.7", "3.8", "3.9", "3.10", "3.11"]
-        branch: ["main", "release"]
+        python: ["3.11"]
+        branch: ["main"]
     runs-on: ${{ matrix.os }}
     steps:
       - name: ⬇ Checkout code
