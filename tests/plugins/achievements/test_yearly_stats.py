@@ -5,9 +5,21 @@ import tempfile
 from unittest import mock
 
 import pytest
+import pytz
 
 import octoprint.plugins.achievements
 from octoprint.plugin import PluginSettings
+
+# The plugin works in the timezone configured in its settings and only falls back to the
+# server's local timezone if there is none. The tests pin both the plugin and all
+# the moments in time they travel to to this timezone, so that the year boundaries
+# don't depend on the timezone of the machine the tests happen to run on.
+TIMEZONE = pytz.timezone("America/New_York")
+
+
+def local(*args):
+    return TIMEZONE.localize(dt.datetime(*args))
+
 
 STATS_2025 = {
     "last_version": "1.12.0",
@@ -45,12 +57,13 @@ def initialized_plugin():
         mocked_settings = mock.MagicMock()
         mocked_settings.get.return_value = None
         plugin._settings = PluginSettings(mocked_settings, plugin_key="achievements")
+        plugin._tz = TIMEZONE
 
         yield plugin
 
 
 def test_load_year(initialized_plugin, time_machine):
-    time_machine.move_to(dt.datetime(2025, 12, 25))
+    time_machine.move_to(local(2025, 12, 25))
 
     initialized_plugin._load_current_year_file()
 
@@ -61,7 +74,7 @@ def test_load_year(initialized_plugin, time_machine):
 
 def test_year_change(initialized_plugin, time_machine):
     # year change should cause stat reset
-    time_machine.move_to(dt.datetime(2025, 12, 31))
+    time_machine.move_to(local(2025, 12, 31, 23, 59))
 
     initialized_plugin._load_current_year_file()
 
@@ -69,7 +82,7 @@ def test_year_change(initialized_plugin, time_machine):
 
     initialized_plugin._current_year_stats.server_starts += 1
 
-    time_machine.move_to(dt.datetime(2026, 1, 1))
+    time_machine.move_to(local(2026, 1, 1, 0, 1))
 
     assert initialized_plugin._current_year_stats.server_starts == 0
     assert initialized_plugin._current_year_stats.year == 2026
@@ -81,7 +94,7 @@ def test_fix_5223_all_increasing(initialized_plugin, time_machine):
     # all stats increasing -> subtract and reset longest print, achievement, server starts and most plugins
     from octoprint.plugins.achievements.data import YearlyStats
 
-    time_machine.move_to(dt.datetime(2026, 1, 6))
+    time_machine.move_to(local(2026, 1, 6))
 
     stats_2025 = YearlyStats(year=2025, **STATS_2025)
     initialized_plugin._write_year_file(stats_2025, year=2025)
@@ -128,7 +141,7 @@ def test_fix_5223_all_increasing_but_current_longest_print(
     # longest print should stay
     from octoprint.plugins.achievements.data import YearlyStats
 
-    time_machine.move_to(dt.datetime(2026, 1, 6))
+    time_machine.move_to(local(2026, 1, 6))
 
     stats_2025 = YearlyStats(year=2025, **STATS_2025)
     initialized_plugin._write_year_file(stats_2025, year=2025)
@@ -136,7 +149,7 @@ def test_fix_5223_all_increasing_but_current_longest_print(
     stats_2026 = YearlyStats(year=2026, **STATS_2025)
     stats_2026.server_starts += 1
     stats_2026.longest_print_duration = 200
-    stats_2026.longest_print_date = dt.datetime(2026, 1, 3, 12, 23, 42).timestamp()
+    stats_2026.longest_print_date = local(2026, 1, 3, 12, 23, 42).timestamp()
     initialized_plugin._write_year_file(stats_2026, year=2026)
 
     assert os.path.exists(os.path.join(initialized_plugin._data_folder, "2025.json"))
@@ -180,7 +193,7 @@ def test_fix_5223_longest_print_mismatch(initialized_plugin, time_machine):
     # stats not all increasing, but longest print not in the current year -> full reset
     from octoprint.plugins.achievements.data import YearlyStats
 
-    time_machine.move_to(dt.datetime(2026, 1, 6))
+    time_machine.move_to(local(2026, 1, 6))
 
     stats_2025 = YearlyStats(year=2025, **STATS_2025)
     initialized_plugin._write_year_file(stats_2025, year=2025)
@@ -215,7 +228,7 @@ def test_fix_5223_noop_1(initialized_plugin, time_machine):
     # stats not all increasing, no longest print -> do nothing
     from octoprint.plugins.achievements.data import YearlyStats
 
-    time_machine.move_to(dt.datetime(2026, 1, 6))
+    time_machine.move_to(local(2026, 1, 6))
 
     stats_2025 = YearlyStats(year=2025, **STATS_2025)
     initialized_plugin._write_year_file(stats_2025, year=2025)
@@ -249,7 +262,7 @@ def test_fix_5223_noop_2(initialized_plugin, time_machine):
     # stats not all increasing, no longest print -> do nothing
     from octoprint.plugins.achievements.data import YearlyStats
 
-    time_machine.move_to(dt.datetime(2026, 1, 6))
+    time_machine.move_to(local(2026, 1, 6))
 
     stats_2025 = YearlyStats(year=2025, **STATS_2025)
     initialized_plugin._write_year_file(stats_2025, year=2025)
@@ -286,7 +299,7 @@ def test_fix_5223_sentinel_set(initialized_plugin, time_machine):
     # sentinel -> do nothing
     from octoprint.plugins.achievements.data import YearlyStats
 
-    time_machine.move_to(dt.datetime(2026, 1, 6))
+    time_machine.move_to(local(2026, 1, 6))
 
     stats_2025 = YearlyStats(year=2025, **STATS_2025)
     initialized_plugin._write_year_file(stats_2025, year=2025)
