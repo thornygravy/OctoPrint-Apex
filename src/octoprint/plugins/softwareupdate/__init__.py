@@ -670,35 +670,23 @@ class SoftwareUpdatePlugin(
 
         return {
             "checks": {
+                # OctoPrint-Apex is a fork of OctoPrint (https://github.com/OctoPrint/OctoPrint,
+                # created by Gina Häußge & contributors), staying on the 1.11.x line. Its
+                # updates have to come from the fork's releases: if this kept pointing at
+                # upstream, "updating" would replace the fork with stock OctoPrint.
                 "octoprint": {
                     "type": "github_release",
-                    "user": "foosel",
-                    "repo": "OctoPrint",
+                    "user": "thornygravy",
+                    "repo": "OctoPrint-Apex",
                     "method": "pip",
-                    "pip": "https://github.com/OctoPrint/OctoPrint/archive/{target_version}.zip",
+                    "pip": "https://github.com/thornygravy/OctoPrint-Apex/archive/{target_version}.zip",
                     "update_script": default_update_script,
                     "restart": "octoprint",
                     "stable_branch": {
-                        "branch": "master",
-                        "commitish": ["master", "main"],
+                        "branch": "main",
+                        "commitish": ["main"],
                         "name": "Stable",
                     },
-                    "prerelease_branches": [
-                        {
-                            "branch": "rc/maintenance",
-                            "commitish": ["rc/maintenance", "next"],  # maintenance RCs
-                            "name": "Maintenance RCs",
-                        },
-                        {
-                            "branch": "rc/devel",
-                            "commitish": [
-                                "rc/maintenance",
-                                "rc/devel",
-                                "next",
-                            ],  # devel & maintenance RCs
-                            "name": "Devel RCs",
-                        },
-                    ],
                 },
             },
             "pip_command": None,
