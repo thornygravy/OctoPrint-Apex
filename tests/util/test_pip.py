@@ -145,8 +145,77 @@ class PipCallerTest(unittest.TestCase):
     def test_check_setup(self):
         """Initialization against local pip should work, including testballoon"""
         caller = octoprint.util.pip.PipCaller()
-        self.assertIsNotNone(caller._command)
-        self.assertIsNotNone(caller._version)
+        self.assertIsNotNone(caller.command)
+        self.assertIsNotNone(caller.version)
+
+
+class PipCallerLazySetupTest(unittest.TestCase):
+    """The (slow) setup of a PipCaller must not happen on construction"""
+
+    def setUp(self):
+        patcher = mock.patch.object(octoprint.util.pip.PipCaller, "_setup_pip")
+        self.setup_pip = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_construction_does_not_set_up(self):
+        octoprint.util.pip.PipCaller()
+        self.setup_pip.assert_not_called()
+
+    def test_first_access_sets_up_once(self):
+        caller = octoprint.util.pip.PipCaller()
+
+        for name in ("command", "version", "version_string", "available"):
+            getattr(caller, name)
+
+        self.setup_pip.assert_called_once()
+
+    def test_execute_sets_up(self):
+        caller = octoprint.util.pip.PipCaller()
+
+        # the mocked setup leaves us without a command
+        with self.assertRaises(octoprint.util.pip.UnknownPip):
+            caller.execute("list")
+
+        self.setup_pip.assert_called_once()
+
+    def test_concurrent_first_access_sets_up_once(self):
+        import threading
+        import time
+
+        self.setup_pip.side_effect = lambda: time.sleep(0.2)
+        caller = octoprint.util.pip.PipCaller()
+
+        threads = [threading.Thread(target=lambda: caller.available) for _ in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+
+        self.setup_pip.assert_called_once()
+
+    def test_warm_up_sets_up_in_background(self):
+        caller = octoprint.util.pip.PipCaller()
+
+        thread = caller.warm_up()
+        thread.join(timeout=5)
+        self.assertFalse(thread.is_alive())
+        self.setup_pip.assert_called_once()
+
+        # using it afterwards doesn't set it up again
+        self.assertFalse(caller.available)
+        self.setup_pip.assert_called_once()
+
+    def test_trigger_refresh_is_still_immediate(self):
+        caller = octoprint.util.pip.PipCaller()
+
+        caller.trigger_refresh()
+        self.setup_pip.assert_called_once()
+
+        self.assertFalse(caller.available)
+        self.setup_pip.assert_called_once()
+
+        caller.trigger_refresh()
+        self.assertEqual(2, self.setup_pip.call_count)
 
 
 @ddt.ddt

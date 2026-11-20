@@ -236,6 +236,9 @@ class PluginManagerPlugin(
         self._pip_caller.on_log_stdout = self._log_stdout
         self._pip_caller.on_log_stderr = self._log_stderr
 
+        # figuring out pip's setup takes a while, no need to hold up the startup for that
+        self._pip_caller.warm_up()
+
     ##~~ Body size hook
 
     def increase_upload_bodysize(self, current_max_body_sizes, *args, **kwargs):

@@ -229,7 +229,12 @@ class PipCaller(CommandlineCaller):
         self._virtual_env = False
         self._install_dir = None
 
-        self.trigger_refresh()
+        # Setting up (discovering pip, its version and how it can be used) means running
+        # pip a couple of times, which is slow, especially on small devices. So instead of
+        # doing that right here on construction it happens on first use (see _ensure_setup)
+        # or ahead of time and in the background if warm_up is called.
+        self._setup_pending = True
+        self._setup_lock = threading.RLock()
 
         self.on_log_call = lambda *args, **kwargs: None
         self.on_log_stdout = lambda *args, **kwargs: None
@@ -257,35 +262,70 @@ class PipCaller(CommandlineCaller):
 
     @property
     def command(self):
+        self._ensure_setup()
         return self._command
 
     @property
     def version(self):
+        self._ensure_setup()
         return self._version
 
     @property
     def version_string(self):
+        self._ensure_setup()
         return self._version_string
 
     @property
     def install_dir(self):
+        self._ensure_setup()
         return self._install_dir
 
     @property
     def use_sudo(self):
+        self._ensure_setup()
         return self._use_sudo
 
     @property
     def use_user(self):
+        self._ensure_setup()
         return self._use_user
 
     @property
     def virtual_env(self):
+        self._ensure_setup()
         return self._virtual_env
 
     @property
     def available(self):
+        self._ensure_setup()
         return self._command is not None
+
+    def _ensure_setup(self):
+        """
+        Makes sure pip has been set up, running the setup now if that hasn't happened yet.
+
+        Safe to call from multiple threads, all of them will block until the (single) setup
+        is done.
+        """
+        if not self._setup_pending:
+            return
+
+        with self._setup_lock:
+            if self._setup_pending:
+                self.trigger_refresh()
+
+    def warm_up(self):
+        """
+        Sets pip up in a background thread, so that the first actual use doesn't have to wait
+        for it.
+
+        :return: the thread that was started
+        """
+        thread = threading.Thread(
+            target=self._ensure_setup, name="PipCallerWarmUp", daemon=True
+        )
+        thread.start()
+        return thread
 
     def trigger_refresh(self):
         self._reset()
@@ -296,8 +336,11 @@ class PipCaller(CommandlineCaller):
             self._command = None
             self._version = None
         self.refresh = False
+        self._setup_pending = False
 
     def execute(self, *args, **kwargs):
+        self._ensure_setup()
+
         if self.refresh:
             self.trigger_refresh()
 
