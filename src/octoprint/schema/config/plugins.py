@@ -11,8 +11,8 @@ from octoprint.vendor.with_attrs_docs import with_attrs_docs
 
 @with_attrs_docs
 class PluginsConfig(BaseModel):
-    disabled: List[str] = Field([], alias="_disabled")
-    """Identifiers of installed but disabled plugins."""
+    disabled: List[str] = Field(["tracking", "errortracking"], alias="_disabled")
+    """Identifiers of installed but disabled plugins. The anonymous usage tracking and error tracking plugins are disabled by default, they report to OctoPrint's upstream servers, which is not what a fork should be doing out of the box. They can be enabled again through the plugin manager."""
 
     forced_compatible: List[str] = Field([], alias="_forcedCompatible")
     """Identifiers of plugins for which python compatibility information will be ignored and the plugin considered compatible in any case. Only for development, do **NOT** use in production."""
