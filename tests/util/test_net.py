@@ -4,36 +4,29 @@ __copyright__ = "Copyright (C) 2017 The OctoPrint Project - Released under terms
 import socket
 from unittest import mock
 
+import ifaddr
+import netaddr
 import pytest
 
 import octoprint.util.net
 
 
-def patched_interfaces():
-    return ["eth0"]
-
-
-def patched_ifaddresses(addr, netmask):
-    if addr == "eth0":
-        return {
-            socket.AF_INET: [
-                {"addr": "192.168.123.10", netmask: "255.255.255.0"},
-                {"addr": "12.1.1.10", netmask: "255.0.0.0"},
+def patched_ifaddr_get_adapters():
+    return [
+        ifaddr.Adapter("lo", "lo", [ifaddr.IP("127.0.0.1", 8, "lo")], 1),
+        ifaddr.Adapter(
+            "eth0",
+            "eth0",
+            [
+                ifaddr.IP("192.168.123.10", 24, "eth0"),
+                ifaddr.IP("12.1.1.10", 8, "eth0"),
+                ifaddr.IP(("2a01:4f8:1c0c:6958::1", 0, 0), 64, "eth0"),
+                ifaddr.IP(("fe80::89f3:31bb:ced0:2093", 0, 2), 64, "eth0"),
             ],
-            socket.AF_INET6: [
-                {"addr": "2a01:4f8:1c0c:6958::1", netmask: "ffff:ffff:ffff:ffff::/64"}
-            ],
-        }
-
-    return {}
-
-
-def patched_ifaddresses_mask(addr):
-    return patched_ifaddresses(addr, "mask")
-
-
-def patched_ifaddresses_netmask(addr):
-    return patched_ifaddresses(addr, "netmask")
+            2,
+        ),
+        ifaddr.Adapter("wlan0", "wlan0", [ifaddr.IP("10.0.0.5", 16, "wlan0")], 3),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -56,17 +49,68 @@ def patched_ifaddresses_netmask(addr):
     ],
 )
 def test_is_lan_address(input_address, input_additional, expected):
-    with mock.patch(
-        "netifaces.interfaces", side_effect=patched_interfaces
-    ), mock.patch.object(octoprint.util.net, "HAS_V6", True):
-        for side_effect in (patched_ifaddresses_mask, patched_ifaddresses_netmask):
-            with mock.patch("netifaces.ifaddresses", side_effect=side_effect):
-                assert (
-                    octoprint.util.net.is_lan_address(
-                        input_address, additional_private=input_additional
-                    )
-                    == expected
-                )
+    with (
+        mock.patch("ifaddr.get_adapters", side_effect=patched_ifaddr_get_adapters),
+        mock.patch.object(octoprint.util.net, "HAS_V6", True),
+    ):
+        assert (
+            octoprint.util.net.is_lan_address(
+                input_address, additional_private=input_additional
+            )
+            == expected
+        )
+
+
+@pytest.mark.parametrize("has_v6", [True, False])
+def test_get_lan_ranges(has_v6):
+    with (
+        mock.patch("ifaddr.get_adapters", side_effect=patched_ifaddr_get_adapters),
+        mock.patch.object(octoprint.util.net, "HAS_V6", has_v6),
+    ):
+        ranges = {str(r) for r in octoprint.util.net.get_lan_ranges(["11.0.0.0/8"])}
+
+    # detected on the interfaces
+    assert "192.168.123.10/24" in ranges
+    assert "12.1.1.10/8" in ranges
+    assert "10.0.0.5/16" in ranges
+    assert ("2a01:4f8:1c0c:6958::1/64" in ranges) == has_v6
+
+    # additionally configured
+    assert "11.0.0.0/8" in ranges
+
+    # always included
+    assert "127.0.0.0/8" in ranges
+
+
+@pytest.mark.parametrize(
+    "family,interfaces,ignored,expected",
+    [
+        # all interfaces, no loopback, defaults to v4
+        (None, None, None, ["192.168.123.10", "12.1.1.10", "10.0.0.5"]),
+        (socket.AF_INET, None, None, ["192.168.123.10", "12.1.1.10", "10.0.0.5"]),
+        # v6, no link local
+        (socket.AF_INET6, None, None, ["2a01:4f8:1c0c:6958::1"]),
+        # ignored interfaces
+        (None, None, ["wlan0"], ["192.168.123.10", "12.1.1.10"]),
+        (None, None, ["eth0", "wlan0"], []),
+        # only specific interfaces, in the requested order, unknown ones are skipped
+        (None, ["wlan0", "eth0"], None, ["10.0.0.5", "192.168.123.10", "12.1.1.10"]),
+        (None, ["doesnotexist", "wlan0"], None, ["10.0.0.5"]),
+        (None, ["eth0", "wlan0"], ["eth0"], ["10.0.0.5"]),
+        # loopback is skipped even if asked for explicitly
+        (None, ["lo"], None, []),
+    ],
+)
+def test_interface_addresses(family, interfaces, ignored, expected):
+    with mock.patch("ifaddr.get_adapters", side_effect=patched_ifaddr_get_adapters):
+        actual = list(
+            octoprint.util.net.interface_addresses(
+                family=family, interfaces=interfaces, ignored=ignored
+            )
+        )
+    assert actual == expected
+    for address in actual:
+        netaddr.IPAddress(address)  # valid addresses
 
 
 @pytest.mark.parametrize(

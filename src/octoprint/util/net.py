@@ -6,8 +6,8 @@ import os
 import socket
 import sys
 
+import ifaddr
 import netaddr
-import netifaces
 import requests
 import werkzeug.http
 from werkzeug.utils import secure_filename
@@ -70,41 +70,28 @@ def get_lan_ranges(additional_private=None):
     if additional_private is None or not isinstance(additional_private, (list, tuple)):
         additional_private = []
 
-    def to_ipnetwork(address):
-        prefix = get_netmask(address)
-        if "/" in prefix:
-            # v6 notation in netifaces output, e.g. "ffff:ffff:ffff:ffff::/64"
-            _, prefix = prefix.split("/")
-
-        addr = strip_interface_tag(address["addr"])
-        return netaddr.IPNetwork(f"{addr}/{prefix}")
+    def to_ipnetwork(ip):
+        addr = strip_interface_tag(ip.ip[0] if ip.is_IPv6 else ip.ip)
+        return netaddr.IPNetwork(f"{addr}/{ip.network_prefix}")
 
     subnets = []
 
-    for interface in netifaces.interfaces():
-        addrs = netifaces.ifaddresses(interface)
-        for v4 in addrs.get(socket.AF_INET, ()):
+    for adapter in ifaddr.get_adapters():
+        for ip in adapter.ips:
+            if ip.is_IPv4:
+                label = "v4"
+            elif ip.is_IPv6 and HAS_V6:
+                label = "v6"
+            else:
+                continue
+
             try:
-                subnets.append(to_ipnetwork(v4))
+                subnets.append(to_ipnetwork(ip))
             except Exception:
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.exception(
-                        "Error while trying to add v4 network to local subnets: {!r}".format(
-                            v4
-                        )
+                        f"Error while trying to add {label} network to local subnets: {ip!r}"
                     )
-
-        if HAS_V6:
-            for v6 in addrs.get(socket.AF_INET6, ()):
-                try:
-                    subnets.append(to_ipnetwork(v6))
-                except Exception:
-                    if logger.isEnabledFor(logging.DEBUG):
-                        logger.exception(
-                            "Error while trying to add v6 network to local subnets: {!r}".format(
-                                v6
-                            )
-                        )
 
     for additional in additional_private:
         try:
@@ -202,29 +189,44 @@ def unmap_v4_as_v6(address):
 def interface_addresses(family=None, interfaces=None, ignored=None):
     """
     Retrieves all of the host's network interface addresses.
+
+    Loopback and link local addresses are skipped.
+
+    Arguments:
+        family: Address family to retrieve addresses for, ``socket.AF_INET`` (default) or
+            ``socket.AF_INET6``
+        interfaces: Names of the interfaces to retrieve addresses for, in the order they
+            should be processed. Unknown interfaces are skipped. Defaults to all interfaces.
+        ignored: Names of interfaces to skip
     """
 
-    import netifaces
-
     if not family:
-        family = netifaces.AF_INET
+        family = socket.AF_INET
+
+    adapters = {adapter.name: adapter for adapter in ifaddr.get_adapters()}
 
     if interfaces is None:
-        interfaces = netifaces.interfaces()
+        interfaces = list(adapters.keys())
 
     if ignored is not None:
         interfaces = [i for i in interfaces if i not in ignored]
 
     for interface in interfaces:
-        try:
-            ifaddresses = netifaces.ifaddresses(interface)
-        except Exception:
+        adapter = adapters.get(interface)
+        if adapter is None:
             continue
-        if family in ifaddresses:
-            for ifaddress in ifaddresses[family]:
-                address = netaddr.IPAddress(ifaddress["addr"])
-                if not address.is_link_local() and not address.is_loopback():
-                    yield ifaddress["addr"]
+
+        for ip in adapter.ips:
+            if family == socket.AF_INET and ip.is_IPv4:
+                address = ip.ip
+            elif family == socket.AF_INET6 and ip.is_IPv6:
+                address = ip.ip[0]
+            else:
+                continue
+
+            ip_address = netaddr.IPAddress(address)
+            if not ip_address.is_link_local() and not ip_address.is_loopback():
+                yield address
 
 
 def address_for_client(
