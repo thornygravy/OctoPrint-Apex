@@ -462,6 +462,15 @@ class SoftwareUpdatePlugin(
                 self._logger.info("Not fetching check overlays, we are offline")
                 self._overlay_cache = {}
 
+            # The overlay is published by upstream OctoPrint and its entry for "octoprint"
+            # describes upstream's own update check (it currently rewrites the repository
+            # owner, for instance). Applied to the Apex check it makes that look for releases
+            # in a repository that doesn't exist, and in general it would let upstream
+            # redirect the updates of this fork. Overlays for all other checks are kept.
+            if not isinstance(self._overlay_cache, dict):
+                self._overlay_cache = {}
+            self._overlay_cache.pop("octoprint", None)
+
             self._overlay_cache_timestamp = time.time()
 
             default_overlay = {}
