@@ -1,6 +1,6 @@
 <h1 align="center">OctoPrint-Apex</h1>
 
-OctoPrint provides a snappy web interface for controlling consumer 3D printers. It is Free Software
+OctoPrint-Apex a continuation (fork) of the 1.x.x branch, it's the same the snappy web interface for your 3D printer, but even snappier! It is Free Software
 and released under the [GNU Affero General Public License V3](https://www.gnu.org/licenses/agpl-3.0.html)[^1].
 
 Its website can be found at [octoprint.org](https://octoprint.org/?utm_source=github&utm_medium=readme).
