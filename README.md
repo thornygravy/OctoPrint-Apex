@@ -1,6 +1,4 @@
-<p align="center"><img src="https://octoprint.org/assets/img/logo.png" alt="OctoPrint's logo" /></p>
-
-<h1 align="center">OctoPrint</h1>
+<h1 align="center">OctoPrint-Apex</h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/v/release/OctoPrint/OctoPrint?logo=github&logoColor=white" alt="GitHub release"/>
